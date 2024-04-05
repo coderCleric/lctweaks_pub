@@ -7,6 +7,7 @@ using System.Reflection.Emit;
 using System.Text;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace LCTweaks
 {
@@ -16,14 +17,172 @@ namespace LCTweaks
         //Config things
         public static bool toggleSprint = false;
         public static float dropAllDelay = 0.2f;
+        public static int maxScannables = 13;
+        public static bool scanInShip = false;
+        public static bool terminalBoom = false;
+        public static bool muteNearTerm = false;
+        public static bool showHealthOnTerm = false;
 
         //Flags necessary for certain patches to run
         public static bool sHeld = false;
         public static bool sNew = false;
         public static bool autoWalk = false;
 
-        //Needed for item discarding
+        //Misc
         public static float dropAllTime = -1;
+        private static Terminal term = null;
+
+        /**
+         * Do tweaks on scan nodes
+         */
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(HUDManager), "MeetsScanNodeRequirements")]
+        public static void ScanThroughWallsInShip(ScanNodeProperties node)
+        {
+            //Make items in the ship scannable through walls
+            GrabbableObject item = node.transform.parent.gameObject.GetComponent<PhysicsProp>();
+            if (scanInShip && item != null && item.isInShipRoom)
+                node.requiresLineOfSight = false;
+            else if (scanInShip && item != null)
+                node.requiresLineOfSight = true;
+        }
+
+        /**
+         * Override how many objects can be scanned
+         */
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(HUDManager), "Awake")]
+        public static void OverridePingNumber(HUDManager __instance)
+        {
+            //Change how many things are hit by the spherecast
+            __instance.scanNodesHit = new RaycastHit[maxScannables];
+
+            //Change the number of UI elements allocated for scanning
+            int dif = maxScannables - 13;
+            if (dif > 0)
+            {
+                //First, change the size of the array
+                RectTransform[] uiThings = new RectTransform[maxScannables];
+
+                //Next, copy existing elements
+                for (int i = 0; i < __instance.scanElements.Length; i++)
+                {
+                    uiThings[i] = __instance.scanElements[i];
+                }
+
+                //Finally, copy actual objects and add them in
+                Transform parent = uiThings[0].parent;
+                for (int i = 13; i < maxScannables; i++)
+                {
+                    uiThings[i] = GameObject.Instantiate(uiThings[0], parent);
+                }
+
+                //Copy it back
+                __instance.scanElements = uiThings;
+            }
+        }
+
+        /**
+         * Make disabling mines blow them up
+         */
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(TerminalAccessibleObject), nameof(TerminalAccessibleObject.CallFunctionFromTerminal))]
+        public static bool ExplodeFromTerminal(TerminalAccessibleObject __instance)
+        {
+            //If it's not a landmine (or the option is disabled), return
+            Landmine mine = __instance.gameObject.GetComponent<Landmine>();
+            if (mine == null || !terminalBoom)
+                return true;
+
+            //Otherwise, explode
+            var method = typeof(Landmine).GetMethod("TriggerMineOnLocalClientByExiting", BindingFlags.Instance | BindingFlags.NonPublic);
+            method.Invoke(mine, new object[] { });
+            return false;
+        }
+
+        /**
+         * Makes mines disappear from the terminal when they explode
+         */
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(Landmine), nameof(Landmine.Detonate))]
+        public static void ClearMineFromTerm(Landmine __instance)
+        {
+            TerminalAccessibleObject termThing = __instance.gameObject.GetComponent<TerminalAccessibleObject>();
+            Image boxImg = termThing.mapRadarBox;
+            if (boxImg != null)
+                boxImg.transform.parent.gameObject.SetActive(false);
+        }
+
+        /**
+         * Register the terminal on awake so we can track it
+         */
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(Terminal), "Awake")]
+        public static void GrabTerminal(Terminal __instance)
+        {
+            term = __instance;
+        }
+
+        /**
+         * Make dogs not hear noises near the terminal
+         * 
+         * @param noisePosition The position that the noise came from
+         */
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(MouthDogAI), nameof(MouthDogAI.DetectNoise))]
+        public static bool MuteNearTerm(Vector3 noisePosition)
+        {
+            //Return true if we see no terminal
+            if (term == null || !muteNearTerm)
+                return true;
+
+            //If the position is within 5 meters of the terminal, cancel the detection
+            bool ret = Vector3.Distance(noisePosition, term.transform.position) > 5f;
+            if (!ret)
+                LCTweaks.DebugLog("Dog had a noise detection event cancelled!");
+            return ret;
+        }
+
+        /**
+         * Attach the recoloring object to living players
+         */
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(PlayerControllerB), "Awake")]
+        public static void CreateRecolorComp(PlayerControllerB __instance)
+        {
+            //Attach the health color thing to the player
+            if (showHealthOnTerm)
+            {
+                DotColorController dot = __instance.transform.Find("Misc/MapDot").gameObject.AddComponent<DotColorController>();
+                dot.player = __instance;
+            }
+        }
+
+        /**
+         * Attach the recoloring object to dead bodies
+         */
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(DeadBodyInfo), "Start")]
+        public static void CreateRecolorCompDead(DeadBodyInfo __instance)
+        {
+            if (showHealthOnTerm)
+            {
+                DotColorController dot = __instance.transform.Find("MapDot").gameObject.AddComponent<DotColorController>();
+            }
+        }
+
+        /**
+         * Attach the recoloring object to masked
+         */
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(MaskedPlayerEnemy), "Awake")]
+        public static void CreateRecolorCompMasked(DeadBodyInfo __instance)
+        {
+            if (showHealthOnTerm)
+            {
+                DotColorController dot = __instance.transform.Find("Misc/MapDot").gameObject.AddComponent<DotColorController>();
+            }
+        }
 
         /**
          * Override standard input reading for the toggle sprint
