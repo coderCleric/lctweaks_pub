@@ -14,15 +14,6 @@ namespace LCTweaks
     [HarmonyPatch]
     public static class Patches
     {
-        //Config things
-        public static bool toggleSprint = false;
-        public static float dropAllDelay = 0.2f;
-        public static int maxScannables = 13;
-        public static bool scanInShip = false;
-        public static bool terminalBoom = false;
-        public static bool muteNearTerm = false;
-        public static bool showHealthOnTerm = false;
-
         //Flags necessary for certain patches to run
         public static bool sHeld = false;
         public static bool sNew = false;
@@ -41,9 +32,9 @@ namespace LCTweaks
         {
             //Make items in the ship scannable through walls
             GrabbableObject item = node.transform.parent.gameObject.GetComponent<PhysicsProp>();
-            if (scanInShip && item != null && item.isInShipRoom)
+            if (LCTweaks.config.ScanInShip.Value && item != null && item.isInShipRoom)
                 node.requiresLineOfSight = false;
-            else if (scanInShip && item != null)
+            else if (LCTweaks.config.ScanInShip.Value && item != null)
                 node.requiresLineOfSight = true;
         }
 
@@ -55,14 +46,14 @@ namespace LCTweaks
         public static void OverridePingNumber(HUDManager __instance)
         {
             //Change how many things are hit by the spherecast
-            __instance.scanNodesHit = new RaycastHit[maxScannables];
+            __instance.scanNodesHit = new RaycastHit[LCTweaks.config.MaxScannables.Value];
 
             //Change the number of UI elements allocated for scanning
-            int dif = maxScannables - 13;
+            int dif = LCTweaks.config.MaxScannables.Value - 13;
             if (dif > 0)
             {
                 //First, change the size of the array
-                RectTransform[] uiThings = new RectTransform[maxScannables];
+                RectTransform[] uiThings = new RectTransform[LCTweaks.config.MaxScannables.Value];
 
                 //Next, copy existing elements
                 for (int i = 0; i < __instance.scanElements.Length; i++)
@@ -72,7 +63,7 @@ namespace LCTweaks
 
                 //Finally, copy actual objects and add them in
                 Transform parent = uiThings[0].parent;
-                for (int i = 13; i < maxScannables; i++)
+                for (int i = 13; i < LCTweaks.config.MaxScannables.Value; i++)
                 {
                     uiThings[i] = GameObject.Instantiate(uiThings[0], parent);
                 }
@@ -91,7 +82,7 @@ namespace LCTweaks
         {
             //If it's not a landmine (or the option is disabled), return
             Landmine mine = __instance.gameObject.GetComponent<Landmine>();
-            if (mine == null || !terminalBoom)
+            if (mine == null || !LCTweaks.config.TerminalBoom.Value)
                 return true;
 
             //Otherwise, explode
@@ -133,7 +124,7 @@ namespace LCTweaks
         public static bool MuteNearTerm(Vector3 noisePosition)
         {
             //Return true if we see no terminal
-            if (term == null || !muteNearTerm)
+            if (term == null || !LCTweaks.config.MuteNearTerm.Value)
                 return true;
 
             //If the position is within 5 meters of the terminal, cancel the detection
@@ -151,7 +142,7 @@ namespace LCTweaks
         public static void CreateRecolorComp(PlayerControllerB __instance)
         {
             //Attach the health color thing to the player
-            if (showHealthOnTerm)
+            if (LCTweaks.config.HealthOnTerm.Value)
             {
                 DotColorController dot = __instance.transform.Find("Misc/MapDot").gameObject.AddComponent<DotColorController>();
                 dot.player = __instance;
@@ -165,7 +156,7 @@ namespace LCTweaks
         [HarmonyPatch(typeof(DeadBodyInfo), "Start")]
         public static void CreateRecolorCompDead(DeadBodyInfo __instance)
         {
-            if (showHealthOnTerm)
+            if (LCTweaks.config.HealthOnTerm.Value)
             {
                 DotColorController dot = __instance.transform.Find("MapDot").gameObject.AddComponent<DotColorController>();
             }
@@ -178,7 +169,7 @@ namespace LCTweaks
         [HarmonyPatch(typeof(MaskedPlayerEnemy), "Awake")]
         public static void CreateRecolorCompMasked(DeadBodyInfo __instance)
         {
-            if (showHealthOnTerm)
+            if (LCTweaks.config.HealthOnTerm.Value)
             {
                 DotColorController dot = __instance.transform.Find("Misc/MapDot").gameObject.AddComponent<DotColorController>();
             }
@@ -192,7 +183,7 @@ namespace LCTweaks
         public static IEnumerable<CodeInstruction> OverrideSprintInput(IEnumerable<CodeInstruction> instructions, ILGenerator il)
         {
             //If the option is disabled, just return the base code
-            if (!toggleSprint)
+            if (!LCTweaks.config.ToggleSprint.Value)
                 return instructions;
 
             //First, load the list of instructions

@@ -37,7 +37,7 @@ namespace LCTweaks
          */
         public static void DiscardPerformed(InputAction.CallbackContext context)
         {
-            Patches.dropAllTime = Time.time + Patches.dropAllDelay;
+            Patches.dropAllTime = Time.time + LCTweaks.config.DropAllDelay.Value;
         }
 
         /**
