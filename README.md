@@ -1,5 +1,6 @@
 # LCTweaks
-Adds a number of minor, configurable tweaks to the game.
+Adds a number of minor, configurable tweaks to the game.<br />
+(Note that all configurable features default to settings that match the vanilla game. Make sure that you check the config!)
 
 **Features**
 - Makes the sprint key toggle sprint, rather than requiring it to be held. Can be toggled in the config.
