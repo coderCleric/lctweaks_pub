@@ -1,6 +1,7 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -337,7 +338,7 @@ namespace LCTweaks
         public static void BindInput(PlayerControllerB __instance)
         {
             InputActionAsset actions = IngamePlayerSettings.Instance.playerInput.actions;
-
+            LCTweaks.DebugLog("Binding controls");
             //Bind the custom input for auto-walk
             LCTCustomInputs.instance.AutoWalkButton.performed += LCTCustomInputs.ToggleAutoWalk;
 
@@ -377,6 +378,13 @@ namespace LCTweaks
         [HarmonyPatch(typeof(PlayerControllerB), "Update")]
         public static void DiscardAllItems(PlayerControllerB __instance)
         {
+            //The coroutine that will run (I don't entirely know why this is necessary, but I'm hoping it helps stuff)
+            IEnumerator DiscardAtEndOfFrame()
+            {
+                yield return new WaitForEndOfFrame();
+                __instance.DropAllHeldItemsAndSync();
+            }
+
             //Early return if this isn't the client
             if (__instance != LCTCustomInputs.clientPlayer)
                 return;
@@ -384,7 +392,7 @@ namespace LCTweaks
             //If drop all time exceeds current time, drop everything
             if(dropAllTime >= 0 && Time.time > dropAllTime)
             {
-                __instance.DropAllHeldItemsAndSync();
+                __instance.StartCoroutine(DiscardAtEndOfFrame());
                 dropAllTime = -1;
             }
         }

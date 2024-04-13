@@ -1,0 +1,7 @@
+{
+  "name": "LCTweaks",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/coderCleric/Poltergeist",
+  "description": "Adds multiple configurable tweaks to Lethal Company.",
+  "dependencies": [ "BepInEx-BepInExPack-5.4.2100", "Rune580-LethalCompany_InputUtils-0.6.3" ]
+}
