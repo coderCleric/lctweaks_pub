@@ -23,6 +23,7 @@ namespace LCTweaks
         //Misc
         public static float dropAllTime = -1;
         private static Terminal term = null;
+        private static bool bindingsBound = false;
 
         /**
          * Do tweaks on scan nodes
@@ -334,9 +335,14 @@ namespace LCTweaks
          * When the player is enabled or disabled, handle the binding of input events
          */
         [HarmonyPostfix]
-        [HarmonyPatch(typeof(PlayerControllerB), "OnEnable")]
-        public static void BindInput(PlayerControllerB __instance)
+        //[HarmonyPatch(typeof(StartMatchLever), "StartGame")]
+        [HarmonyPatch(typeof(StartOfRound), "Start")]
+        public static void BindInput()
         {
+            if (bindingsBound)
+                return;
+            bindingsBound = true;
+
             InputActionAsset actions = IngamePlayerSettings.Instance.playerInput.actions;
             LCTweaks.DebugLog("Binding controls");
             //Bind the custom input for auto-walk
@@ -347,10 +353,15 @@ namespace LCTweaks
             actions.FindAction("Discard").canceled += LCTCustomInputs.DiscardCanceled;
         }
         [HarmonyPostfix]
-        [HarmonyPatch(typeof(PlayerControllerB), "OnDisable")]
+        [HarmonyPatch(typeof(GameNetworkManager), "Disconnect")]
         public static void UnbindInput()
         {
+            if (!bindingsBound)
+                return;
+            bindingsBound = false;
+
             InputActionAsset actions = IngamePlayerSettings.Instance.playerInput.actions;
+            LCTweaks.DebugLog("Unbinding controls");
 
             //Unbind the custom input for auto-walk
             LCTCustomInputs.instance.AutoWalkButton.performed -= LCTCustomInputs.ToggleAutoWalk;

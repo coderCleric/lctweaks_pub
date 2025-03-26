@@ -70,3 +70,4 @@ crashlytics-build.properties
 /LethalCompanyTemplate/obj
 /Dependency Storage
 /LethalCompanyTemplate/bin/Release/netstandard2.1
+/LethalCompanyTemplate/bin/Debug/netstandard2.1

@@ -14,7 +14,7 @@ namespace LCTweaks
         //Plugin info
         public const string MOD_GUID = "coderCleric.LCTweaks";
         public const string MOD_NAME = "LCTweaks";
-        public const string MOD_VERSION = "1.0.0";
+        public const string MOD_VERSION = "1.0.2";
         public int c = 0;
 
         //Other fields

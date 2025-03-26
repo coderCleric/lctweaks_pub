@@ -18,6 +18,4 @@ Adds a number of minor, configurable tweaks to the game.<br />
 # Installation
 Nothing special, just the same as any other BepInEx-reliant mod. Make sure that you have InputUtils installed though!
 
-# Known bugs/Misc notes
-- Auto-walk and hold-to-drop seem to not work with certain mods, not certain which ones though.
 - If you find any bugs or have any suggestions, feel free to post an issue on the [Github repo](https://github.com/coderCleric/lctweaks_pub)
