@@ -32,9 +32,14 @@ namespace LCTweaks
         [HarmonyPatch(typeof(HUDManager), "MeetsScanNodeRequirements")]
         public static void ScanThroughWallsInShip(ScanNodeProperties node)
         {
+            //Error checks
+            if (!LCTweaks.config.ScanInShip.Value || node.transform.parent == null ||
+                node.transform.parent.gameObject.GetComponent<PhysicsProp>() == null)
+                return;
+
             //Make items in the ship scannable through walls
             GrabbableObject item = node.transform.parent.gameObject.GetComponent<PhysicsProp>();
-            if (LCTweaks.config.ScanInShip.Value && item != null && item.isInShipRoom)
+            if (item != null && item.isInShipRoom)
                 node.requiresLineOfSight = false;
             else if (LCTweaks.config.ScanInShip.Value && item != null)
                 node.requiresLineOfSight = true;
