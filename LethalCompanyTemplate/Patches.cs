@@ -183,114 +183,6 @@ namespace LCTweaks
         }
 
         /**
-         * Override standard input reading for the toggle sprint
-         */
-        [HarmonyTranspiler]
-        [HarmonyPatch(typeof(PlayerControllerB), "Update")]
-        public static IEnumerable<CodeInstruction> OverrideSprintInput(IEnumerable<CodeInstruction> instructions, ILGenerator il)
-        {
-            //If the option is disabled, just return the base code
-            if (!LCTweaks.config.ToggleSprint.Value)
-                return instructions;
-
-            //First, load the list of instructions
-            List<CodeInstruction> code = new List<CodeInstruction>(instructions);
-
-            //Next, find where we need to insert
-            int insertIndex = -1;
-            Label nextConLabel = il.DefineLabel();
-            object elseLabel = null;
-            for (int i = 0; i < code.Count - 1; i++)
-            {
-                //Count it as a good spot when we recognize the 2 lines
-                if (code[i].opcode == OpCodes.Ldc_R4 && (float)code[i].operand == 0.3f)
-                {
-                    LCTweaks.DebugLog("Found expected structure for toggle sprint transpiler");
-
-                    //Save the index to insert into
-                    insertIndex = i;
-
-                    //Store the label for the else statement
-                    elseLabel = code[i + 1].operand;
-
-                    //Store the label for the next condition
-                    code[i + 2].labels.Add(nextConLabel);
-                    break;
-                }
-            }
-
-            //Going to declare all of the labels here
-            Label BLabel = il.DefineLabel();
-            Label DLabel = il.DefineLabel();
-            Label ELabel = il.DefineLabel();
-            Label GLabel = il.DefineLabel();
-
-            //Need to determine the "held" and "new" flags
-            //Can just hijack first bit due to similarity, need to determine if key is pressed enough
-            code[insertIndex + 1].opcode = OpCodes.Bge_Un_S;
-            code[insertIndex + 1].operand = BLabel;
-
-            List<CodeInstruction> insertion = new List<CodeInstruction>();
-
-            //If it's not, set flags to false and go straight to the later bit
-            insertion.Add(new CodeInstruction(OpCodes.Ldc_I4_0));
-            insertion.Add(new CodeInstruction(OpCodes.Stsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sHeld))));
-            insertion.Add(new CodeInstruction(OpCodes.Ldc_I4_0));
-            insertion.Add(new CodeInstruction(OpCodes.Stsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sNew))));
-            insertion.Add(new CodeInstruction(OpCodes.Br_S, ELabel));
-
-            //If it is, check the value of "held"
-            CodeInstruction tmp = new CodeInstruction(OpCodes.Ldsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sHeld)));
-            tmp.labels.Add(BLabel);
-            insertion.Add(tmp);
-            insertion.Add(new CodeInstruction(OpCodes.Brfalse_S, DLabel));
-
-            //If "held" is true, set "new" to false and go to the later bit
-            insertion.Add(new CodeInstruction(OpCodes.Ldc_I4_0));
-            insertion.Add(new CodeInstruction(OpCodes.Stsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sNew))));
-            insertion.Add(new CodeInstruction(OpCodes.Br_S, ELabel));
-
-            //If "held" is false, set both flags to true
-            tmp = new CodeInstruction(OpCodes.Ldc_I4_1);
-            tmp.labels.Add(DLabel);
-            insertion.Add(tmp);
-            insertion.Add(new CodeInstruction(OpCodes.Stsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sHeld))));
-            insertion.Add(new CodeInstruction(OpCodes.Ldc_I4_1));
-            insertion.Add(new CodeInstruction(OpCodes.Stsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sNew))));
-
-            //This is the later bit, now we need to route based on "isSprinting" and "new"
-            //First, split based on if we're sprinting
-            tmp = new CodeInstruction(OpCodes.Ldarg_0);
-            tmp.labels.Add(ELabel);
-            insertion.Add(tmp);
-            insertion.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PlayerControllerB), nameof(PlayerControllerB.isSprinting))));
-            insertion.Add(new CodeInstruction(OpCodes.Brtrue_S, GLabel));
-
-            //If we are not sprinting and the key is newly pressed, check remaining conditions
-            insertion.Add(new CodeInstruction(OpCodes.Ldsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sNew))));
-            insertion.Add(new CodeInstruction(OpCodes.Brtrue_S, nextConLabel));
-            //If the key is not newly pressed, go to the else
-            insertion.Add(new CodeInstruction(OpCodes.Br_S, elseLabel));
-
-            //If we are sprinting and the key is newly pressed, go to the else
-            tmp = new CodeInstruction(OpCodes.Ldsfld, AccessTools.Field(typeof(Patches), nameof(Patches.sNew)));
-            tmp.labels.Add(GLabel);
-            insertion.Add(tmp);
-            insertion.Add(new CodeInstruction(OpCodes.Brtrue_S, elseLabel));
-            //If the key is not newly pressed, check remaining conditions
-            insertion.Add(new CodeInstruction(OpCodes.Br_S, nextConLabel));
-
-            //Insert the code
-            if (insertIndex != -1)
-            {
-                code.InsertRange(insertIndex + 2, insertion);
-            }
-
-            //Return
-            return code;
-        }
-
-        /**
          * Override standard input reading for the toggle run
          * 
          * @param __instance The calling input action
@@ -398,7 +290,8 @@ namespace LCTweaks
             IEnumerator DiscardAtEndOfFrame()
             {
                 yield return new WaitForEndOfFrame();
-                __instance.DropAllHeldItemsAndSync();
+                __instance.DropAllHeldItemsAndSync(__instance.transform.position, __instance.localItemHolder.position, 
+                    __instance.localItemHolder.eulerAngles, __instance.playerEye.transform.position, __instance.playerEye.transform.eulerAngles);
             }
 
             //Early return if this isn't the client

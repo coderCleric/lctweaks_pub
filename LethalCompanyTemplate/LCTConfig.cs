@@ -9,7 +9,6 @@ namespace LCTweaks
     public class LCTConfig
     {
         //Input related configs
-        public ConfigEntry<bool> ToggleSprint { get; private set; }
         public ConfigEntry<float> DropAllDelay { get; private set; }
 
         //Scanner related configs
@@ -28,10 +27,6 @@ namespace LCTweaks
         {
 
             //Input
-            ToggleSprint = cfg.Bind<bool>("Input",
-                "ToggleSprint",
-                false,
-                "If true, pressing the sprint key will keep the player sprinting until they stop moving.");
             DropAllDelay = cfg.Bind<float>("Input",
                 "DropAllDelay",
                 1f,
